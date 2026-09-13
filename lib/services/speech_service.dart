@@ -65,20 +65,50 @@ class SpeechService {
   }
 
   static String stripMarkdown(String text) {
-    return text
-        .replaceAll(RegExp(r'#{1,6}\s'), '')
-        .replaceAll(RegExp(r'\*\*([^*]+)\*\*'), r'$1')
-        .replaceAll(RegExp(r'\*([^*]+)\*'), r'$1')
-        .replaceAll(RegExp(r'__([^_]+)__'), r'$1')
-        .replaceAll(RegExp(r'_([^_]+)_'), r'$1')
-        .replaceAll(RegExp(r'`([^`]+)`'), r'$1')
-        .replaceAll(RegExp(r'```[\s\S]*?```'), '')
-        .replaceAll(RegExp(r'\[([^\]]+)\]\([^)]+\)'), r'$1')
-        .replaceAll(RegExp(r'!\[([^\]]*)\]\([^]+)'), '')
-        .replaceAll(RegExp(r'^\s*[-*+]\s', multiLine: true), '')
-        .replaceAll(RegExp(r'^\s*\d+\.\s', multiLine: true), '')
-        .replaceAll(RegExp(r'>\s'), '')
-        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
-        .trim();
+    var result = text;
+
+    // Remove fenced code blocks entirely
+    result = result.replaceAll(RegExp(r'```[\s\S]*?```'), '');
+    // Remove images
+    result = result.replaceAll(RegExp(r'!\[[^\]]*\]\([^)]*\)'), '');
+    // Links -> keep the label text
+    result = result.replaceAllMapped(
+      RegExp(r'\[([^\]]+)\]\([^)]*\)'),
+      (m) => m.group(1) ?? '',
+    );
+    // Bold / italic / inline code -> keep inner text
+    result = result.replaceAllMapped(
+      RegExp(r'\*\*\*([^*]+)\*\*\*'),
+      (m) => m.group(1) ?? '',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'\*\*([^*]+)\*\*'),
+      (m) => m.group(1) ?? '',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'__([^_]+)__'),
+      (m) => m.group(1) ?? '',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'\*([^*]+)\*'),
+      (m) => m.group(1) ?? '',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'_([^_]+)_'),
+      (m) => m.group(1) ?? '',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'`([^`]+)`'),
+      (m) => m.group(1) ?? '',
+    );
+    // Headings, list bullets/numbers, blockquotes
+    result = result.replaceAll(RegExp(r'#{1,6}\s'), '');
+    result = result.replaceAll(RegExp(r'^\s*[-*+]\s', multiLine: true), '');
+    result = result.replaceAll(RegExp(r'^\s*\d+\.\s', multiLine: true), '');
+    result = result.replaceAll(RegExp(r'^\s*>\s', multiLine: true), '');
+    // Collapse excess blank lines
+    result = result.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+
+    return result.trim();
   }
 }

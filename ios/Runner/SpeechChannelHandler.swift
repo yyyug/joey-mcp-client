@@ -26,7 +26,7 @@ class SpeechChannelHandler: NSObject, AVSpeechSynthesizerDelegate {
         case "resume":
             resumeSpeaking()
             result(true)
-        case "isSpeaking")
+        case "isSpeaking":
             result(isSpeaking)
         case "getAvailableVoices":
             result(getAvailableVoices())
