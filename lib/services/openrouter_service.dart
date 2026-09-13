@@ -34,6 +34,42 @@ String _redactedRequestBody(Map<String, dynamic> requestData) {
   return jsonEncode(redacted);
 }
 
+/// Extract a human-readable error message from an API error body.
+///
+/// Accepts either a decoded JSON value or the raw response body string, and
+/// understands the shapes used by OpenRouter and OpenAI-compatible providers:
+/// `{"error": {"message": "..."}}`, `{"error": {"metadata": {"raw": "..."}}}`,
+/// and plain `{"message": "..."}`. Returns null when nothing useful is found.
+String? _extractApiErrorMessage(dynamic data) {
+  dynamic decoded = data;
+  if (decoded is String) {
+    final trimmed = decoded.trim();
+    if (trimmed.isEmpty) return null;
+    try {
+      decoded = jsonDecode(trimmed);
+    } catch (_) {
+      return trimmed;
+    }
+  }
+
+  if (decoded is Map) {
+    final error = decoded['error'];
+    if (error is Map) {
+      final raw = error['metadata']?['raw'];
+      if (raw is String && raw.trim().isNotEmpty) return raw.trim();
+      final message = error['message'];
+      if (message is String && message.trim().isNotEmpty) {
+        return message.trim();
+      }
+    }
+    if (error is String && error.trim().isNotEmpty) return error.trim();
+    final message = decoded['message'];
+    if (message is String && message.trim().isNotEmpty) return message.trim();
+  }
+
+  return null;
+}
+
 /// Exception thrown when authentication fails (e.g., expired token)
 class OpenRouterAuthException implements Exception {
   final String message;
@@ -355,6 +391,13 @@ class OpenRouterService {
         } catch (_) {}
         throw OpenRouterRateLimitException(message);
       }
+      final serverMessage = _extractApiErrorMessage(e.response?.data);
+      if (serverMessage != null) {
+        final status = e.response?.statusCode;
+        throw Exception(
+          'Chat completion failed${status != null ? ' ($status)' : ''}: $serverMessage',
+        );
+      }
       throw Exception('Error making chat completion request: ${e.message}');
     } catch (e) {
       print('OpenRouter: chatCompletion unexpected error: $e');
@@ -595,13 +638,14 @@ class OpenRouterService {
       print('  Response type: ${e.response?.data.runtimeType}');
 
       // Try to read the response body if it's a stream
+      String? errorBodyText;
       if (e.response?.data is ResponseBody) {
         try {
           final responseBody = e.response!.data as ResponseBody;
           final chunks = await responseBody.stream.toList();
           final bytes = chunks.expand((chunk) => chunk).toList();
-          final errorText = utf8.decode(bytes);
-          print('  Response body: $errorText');
+          errorBodyText = utf8.decode(bytes);
+          print('  Response body: $errorBodyText');
         } catch (readError) {
           print('  Failed to read response body: $readError');
         }
@@ -628,17 +672,19 @@ class OpenRouterService {
       }
       if (e.response?.statusCode == 429) {
         print('OpenRouter: 429 Rate Limited');
-        String message = 'Rate limited. Please wait a moment and try again.';
-        try {
-          final responseData = e.response?.data;
-          if (responseData is Map) {
-            final raw = responseData['error']?['metadata']?['raw'];
-            if (raw is String && raw.isNotEmpty) {
-              message = raw;
-            }
-          }
-        } catch (_) {}
+        final message =
+            _extractApiErrorMessage(errorBodyText ?? e.response?.data) ??
+            'Rate limited. Please wait a moment and try again.';
         throw OpenRouterRateLimitException(message);
+      }
+      final serverMessage = _extractApiErrorMessage(
+        errorBodyText ?? e.response?.data,
+      );
+      if (serverMessage != null) {
+        final status = e.response?.statusCode;
+        throw Exception(
+          'Chat completion failed${status != null ? ' ($status)' : ''}: $serverMessage',
+        );
       }
       throw Exception(
         'Error making streaming chat completion request: ${e.message}',
