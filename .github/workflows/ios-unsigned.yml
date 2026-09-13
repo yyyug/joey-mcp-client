@@ -1,0 +1,61 @@
+name: iOS Unsigned Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install
+
+      - name: Build iOS (no codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Create unsigned IPA
+        run: |
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -ry Joey-unsigned.ipa Payload
+          rm -rf Payload
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned-ipa
+          path: build/ios/iphoneos/Joey-unsigned.ipa
+          retention-days: 7
+
+      - name: Output download info
+        run: |
+          echo "## iOS Unsigned Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The unsigned IPA has been built successfully." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download the artifact from the Actions page" >> $GITHUB_STEP_SUMMARY
+          echo "2. Sign with your own certificate using one of these methods:" >> $GITHUB_STEP_SUMMARY
+          echo "   - **Sideloadly** (Windows/Mac): sideloadly.io" >> $GITHUB_STEP_SUMMARY
+          echo "   - **AltStore** (Windows/Mac): altstore.io" >> $GITHUB_STEP_SUMMARY
+          echo "   - **Xcode**: Open Window > Devices, drag IPA to installed apps" >> $GITHUB_STEP_SUMMARY
+          echo "   - **ios-deploy**: \`ios-deploy --bundle Joey-unsigned.ipa\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### File Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build**: Release (no codesign)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Minimum iOS**: 12.0" >> $GITHUB_STEP_SUMMARY
+          echo "- **Architectures**: arm64" >> $GITHUB_STEP_SUMMARY

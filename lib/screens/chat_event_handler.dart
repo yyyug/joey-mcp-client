@@ -5,6 +5,8 @@ import 'package:uuid/uuid.dart';
 import '../models/message.dart';
 import '../providers/conversation_provider.dart';
 import '../services/chat_service.dart';
+import '../services/speech_service.dart';
+import '../services/default_model_service.dart';
 import '../widgets/sampling_request_dialog.dart';
 import 'chat_screen.dart';
 
@@ -84,6 +86,8 @@ mixin ChatEventHandlerMixin on State<ChatScreen> {
         isLoadingValue = false;
         currentProgressValue = null; // Clear progress when conversation completes
       });
+      // Auto-announce the response if enabled
+      _announceLastResponse(provider);
     } else if (event is MaxIterationsReached) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -184,6 +188,32 @@ mixin ChatEventHandlerMixin on State<ChatScreen> {
     } else if (event is McpAuthRequiredForServer) {
       handleServerNeedsOAuth(event.serverId, event.serverUrl);
     }
+  }
+
+  /// Auto-announce the last assistant response if speech is enabled
+  void _announceLastResponse(ConversationProvider provider) async {
+    final speechEnabled = await DefaultModelService.getSpeechEnabled();
+    if (!speechEnabled) return;
+
+    final messages = provider.getMessages(widget.conversation.id);
+    if (messages.isEmpty) return;
+
+    // Find the last assistant message
+    final lastAssistant = messages.lastWhere(
+      (m) => m.role == MessageRole.assistant && m.content.isNotEmpty,
+      orElse: () => Message(
+        id: '',
+        conversationId: '',
+        role: MessageRole.system,
+        content: '',
+        timestamp: DateTime.now(),
+      ),
+    );
+
+    if (lastAssistant.id.isEmpty) return;
+
+    final plainText = SpeechService.stripMarkdown(lastAssistant.content);
+    SpeechService.speak(plainText);
   }
 
   /// Show a dialog when the user has insufficient OpenRouter credits

@@ -1,10 +1,12 @@
 import Flutter
 import UIKit
 import EventKit
+import AVFoundation
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private let reminderStore = EKEventStore()
+  private let speechHandler = SpeechChannelHandler()
 
   override func application(
     _ application: UIApplication,
@@ -12,6 +14,7 @@ import EventKit
   ) -> Bool {
     if let controller = window?.rootViewController as? FlutterViewController {
       registerReminderChannel(binaryMessenger: controller.binaryMessenger)
+      registerSpeechChannel(binaryMessenger: controller.binaryMessenger)
     }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
@@ -20,6 +23,19 @@ import EventKit
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "LocalRemindersPlugin") {
       registerReminderChannel(binaryMessenger: registrar.messenger())
+    }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "SpeechChannelHandler") {
+      registerSpeechChannel(binaryMessenger: registrar.messenger())
+    }
+  }
+
+  private func registerSpeechChannel(binaryMessenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(
+      name: "com.kaiserapps.joey/speech",
+      binaryMessenger: binaryMessenger
+    )
+    channel.setMethodCallHandler { [weak self] call, result in
+      self?.speechHandler.handleCall(call, result: result)
     }
   }
 
