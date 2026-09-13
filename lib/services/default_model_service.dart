@@ -9,6 +9,7 @@ class DefaultModelService {
   static const String _systemPromptKey = 'system_prompt';
   static const String _showThinkingKey = 'show_thinking';
   static const String _maxToolCallsKey = 'max_tool_calls';
+  static const String _speechEnabledKey = 'speech_enabled';
   static const int _defaultMaxToolCalls = 10;
   static const String _defaultSystemPrompt =
       'You are a helpful assistant.\nUse markdown when rendering your responses.';
@@ -92,5 +93,17 @@ class DefaultModelService {
   static Future<void> setMaxToolCalls(int value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_maxToolCallsKey, value);
+  }
+
+  /// Get whether speech announcement is enabled. Default true.
+  static Future<bool> getSpeechEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_speechEnabledKey) ?? true;
+  }
+
+  /// Set whether speech announcement is enabled.
+  static Future<void> setSpeechEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_speechEnabledKey, enabled);
   }
 }

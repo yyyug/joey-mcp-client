@@ -29,6 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Map<String, dynamic>? _defaultModelDetails;
   bool _isLoading = true;
   bool _autoTitleEnabled = true;
+  bool _speechEnabled = true;
   String _systemPrompt = '';
   int _maxToolCalls = 10;
   String _providerName = 'OpenRouter';
@@ -44,6 +45,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     final openRouterService = context.read<OpenRouterService>();
     final autoTitleEnabled = await DefaultModelService.getAutoTitleEnabled();
+    final speechEnabled = await DefaultModelService.getSpeechEnabled();
     final systemPrompt = await DefaultModelService.getSystemPrompt();
     final maxToolCalls = await DefaultModelService.getMaxToolCalls();
     final providerName = await openRouterService.getProviderDisplayName();
@@ -51,6 +53,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       setState(() {
         _autoTitleEnabled = autoTitleEnabled;
+        _speechEnabled = speechEnabled;
         _maxToolCalls = maxToolCalls;
         _systemPrompt = systemPrompt;
         _providerName = providerName;
@@ -247,6 +250,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: _showMaxToolCallsDialog,
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: SwitchListTile(
+              secondary: const Icon(Icons.volume_up),
+              title: const Text('Announce Replies'),
+              subtitle: const Text(
+                'Read AI responses aloud using iOS speech',
+              ),
+              value: _speechEnabled,
+              onChanged: (bool value) async {
+                await DefaultModelService.setSpeechEnabled(value);
+                setState(() {
+                  _speechEnabled = value;
+                });
+              },
             ),
           ),
 

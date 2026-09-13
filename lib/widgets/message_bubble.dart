@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_smooth_markdown/flutter_smooth_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/message.dart';
+import '../services/speech_service.dart';
 import '../utils/date_formatter.dart';
 import 'tool_result_media.dart';
 import 'usage_info_button.dart';
@@ -331,6 +332,13 @@ class MessageBubble extends StatelessWidget {
                         onPressed: () =>
                             _copyToClipboard(context, showThinking),
                       ),
+                      if (!isUser && message.content.isNotEmpty)
+                        _buildActionButton(
+                          context: context,
+                          icon: Icons.volume_up,
+                          tooltip: 'Read aloud',
+                          onPressed: () => _speakMessage(context),
+                        ),
                       if (onRegenerate != null)
                         _buildActionButton(
                           context: context,
@@ -402,6 +410,17 @@ class MessageBubble extends StatelessWidget {
       const SnackBar(
         content: Text('Message copied to clipboard'),
         duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _speakMessage(BuildContext context) {
+    final plainText = SpeechService.stripMarkdown(message.content);
+    SpeechService.speak(plainText);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Reading aloud...'),
+        duration: Duration(seconds: 1),
       ),
     );
   }
