@@ -2,6 +2,12 @@ name: iOS Unsigned Build
 
 on:
   workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - 'ios/**'
+      - 'lib/**'
+      - '.github/workflows/ios-unsigned.yml'
 
 jobs:
   build-ios:
